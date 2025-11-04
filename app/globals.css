@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-text-primary antialiased;
+  }
+}
+
+@layer components {
+  /* Wordle-style button */
+  .btn-primary {
+    @apply px-6 py-3 bg-correct hover:bg-correct/90 text-white font-bold rounded transition-colors;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-border hover:bg-border/80 text-white font-bold rounded transition-colors;
+  }
+
+  /* Wordle-style card */
+  .card {
+    @apply bg-surface border border-border rounded-lg p-6 transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply bg-surface border border-border rounded-lg p-6 transition-all duration-300 hover:shadow-lg hover:border-present/50 cursor-pointer;
+  }
+
+  .card-interactive {
+    @apply bg-surface border border-border rounded-lg p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl;
+  }
+
+  /* Wordle-style input */
+  .input {
+    @apply w-full px-4 py-3 bg-background border border-border rounded text-text-primary placeholder-text-secondary focus:outline-none focus:border-present transition-colors;
+  }
+
+  /* Star rating */
+  .star {
+    @apply text-3xl cursor-pointer transition-colors;
+  }
+
+  .star-filled {
+    @apply text-present;
+  }
+
+  .star-empty {
+    @apply text-border;
+  }
+}
+
+@layer utilities {
+  /* Animation for toast notifications */
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  /* Animation for cards and elements */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+  }
+
+  /* Pulse animation for loading states */
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}

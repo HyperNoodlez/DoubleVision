@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { writeFile } from "fs/promises";
-import { join } from "path";
+import { put } from "@vercel/blob";
 import { canUserUploadToday } from "@/lib/db/users";
 import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { createPhoto } from "@/lib/db/photos";
@@ -83,18 +82,16 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(7);
     const fileExtension = file.name.split('.').pop();
-    const filename = `${userId}-${timestamp}-${randomSuffix}.${fileExtension}`;
+    const filename = `photos/${userId}-${timestamp}-${randomSuffix}.${fileExtension}`;
 
-    // Convert file to buffer and save to local filesystem
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Upload to Vercel Blob Storage
+    const blob = await put(filename, file, {
+      access: 'public',
+      addRandomSuffix: false,
+    });
 
-    // Save to public/uploads directory
-    const filepath = join(process.cwd(), 'public', 'uploads', filename);
-    await writeFile(filepath, buffer);
-
-    // Create public URL (accessible at /uploads/filename)
-    const imageUrl = `/uploads/${filename}`;
+    // Use the Vercel Blob URL
+    const imageUrl = blob.url;
 
     // Save photo metadata to database
     const photo = await createPhoto({

@@ -78,7 +78,8 @@ export async function markAssignmentComplete(
     COLLECTIONS.REVIEW_ASSIGNMENTS
   );
 
-  await collection.updateOne(
+  // Try to update with string photoId first
+  let result = await collection.updateOne(
     { userId, photoId, completed: false },
     {
       $set: {
@@ -87,6 +88,19 @@ export async function markAssignmentComplete(
       },
     }
   );
+
+  // If no document was updated and photoId is valid ObjectId, try with ObjectId
+  if (result.matchedCount === 0 && ObjectId.isValid(photoId)) {
+    await collection.updateOne(
+      { userId, photoId: new ObjectId(photoId) as any, completed: false },
+      {
+        $set: {
+          completed: true,
+          completedAt: new Date(),
+        },
+      }
+    );
+  }
 }
 
 // Check if user has completed all assigned reviews (5 reviews)
@@ -149,7 +163,18 @@ export async function getAssignment(
     COLLECTIONS.REVIEW_ASSIGNMENTS
   );
 
-  return await collection.findOne({ userId, photoId });
+  // Try both string comparison and ObjectId comparison
+  let assignment = await collection.findOne({ userId, photoId });
+
+  // If not found with string comparison, try with ObjectId
+  if (!assignment && ObjectId.isValid(photoId)) {
+    assignment = await collection.findOne({
+      userId,
+      photoId: new ObjectId(photoId) as any
+    });
+  }
+
+  return assignment;
 }
 
 // Check if photo is assigned to user
@@ -161,7 +186,18 @@ export async function isPhotoAssignedToUser(
     COLLECTIONS.REVIEW_ASSIGNMENTS
   );
 
-  const assignment = await collection.findOne({ userId, photoId });
+  // Try both string comparison and ObjectId comparison
+  // MongoDB might store photoId as ObjectId or string depending on how it was inserted
+  let assignment = await collection.findOne({ userId, photoId });
+
+  // If not found with string comparison, try with ObjectId
+  if (!assignment && ObjectId.isValid(photoId)) {
+    assignment = await collection.findOne({
+      userId,
+      photoId: new ObjectId(photoId) as any
+    });
+  }
+
   return !!assignment;
 }
 

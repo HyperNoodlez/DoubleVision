@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Check if photo is assigned to user
     const isAssigned = await isPhotoAssignedToUser(userId, photoId);
+    console.log(`🔍 Checking assignment: userId=${userId}, photoId=${photoId}, isAssigned=${isAssigned}`);
     if (!isAssigned) {
       return NextResponse.json(
         { error: "This photo is not assigned to you for review." },

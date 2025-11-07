@@ -28,7 +28,16 @@ export async function createPhoto(data: {
 // Get photo by ID
 export async function getPhotoById(photoId: string): Promise<PhotoDocument | null> {
   const collection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
-  return await collection.findOne({ _id: photoId });
+
+  // Try string comparison first
+  let photo = await collection.findOne({ _id: photoId });
+
+  // If not found with string, try ObjectId
+  if (!photo && ObjectId.isValid(photoId)) {
+    photo = await collection.findOne({ _id: new ObjectId(photoId) as any });
+  }
+
+  return photo;
 }
 
 // Get all photos by user
@@ -44,22 +53,33 @@ export async function getPhotosByUser(
     .toArray();
 }
 
-// Get random photos needing review (excluding user's own photos)
+// Get random photos needing review (excluding user's own photos and already assigned photos)
 export async function getPhotosNeedingReview(
   excludeUserId: string,
   count: number = 5
 ): Promise<PhotoDocument[]> {
-  const collection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
+  const photosCollection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
+  const assignmentsCollection = await getCollection(COLLECTIONS.REVIEW_ASSIGNMENTS);
 
-  // Get photos that need reviews (less than 5 reviews received)
+  // Get photo IDs already assigned to this user
+  const existingAssignments = await assignmentsCollection
+    .find({ userId: excludeUserId })
+    .project({ photoId: 1 })
+    .toArray();
+
+  const assignedPhotoIds = existingAssignments.map((a: any) => a.photoId);
+
+  // Get photos that are available for review
   // Exclude the user's own photos
-  const photos = await collection
+  // Exclude photos already assigned to this user
+  // Accept both "pending" and "reviewed" status (photos can be reviewed multiple times)
+  const photos = await photosCollection
     .aggregate([
       {
         $match: {
+          _id: { $nin: assignedPhotoIds },
           userId: { $ne: excludeUserId },
-          reviewsReceived: { $lt: 5 },
-          status: "pending",
+          status: { $in: ["pending", "reviewed"] },
         },
       },
       { $sample: { size: count } },
@@ -229,7 +249,14 @@ export async function getPhotoWithStats(photoId: string): Promise<{
   };
 } | null> {
   const collection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
-  const photo = await collection.findOne({ _id: photoId });
+
+  // Try string comparison first
+  let photo = await collection.findOne({ _id: photoId });
+
+  // If not found with string, try ObjectId
+  if (!photo && ObjectId.isValid(photoId)) {
+    photo = await collection.findOne({ _id: new ObjectId(photoId) as any });
+  }
 
   if (!photo) return null;
 

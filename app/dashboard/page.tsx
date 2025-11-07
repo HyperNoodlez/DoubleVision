@@ -6,7 +6,7 @@ import RatingDisplay, { RatingProgress } from "@/components/RatingDisplay";
 import { getUserStats, canUserUploadToday } from "@/lib/db/users";
 import {
   getTodayCompletedReviewCount,
-  hasUserCompletedAllReviews,
+  hasCompletedMinimumReviews,
 } from "@/lib/db/reviewAssignments";
 
 export default async function DashboardPage() {
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
       getUserStats(userId),
       canUserUploadToday(userId),
       getTodayCompletedReviewCount(userId),
-      hasUserCompletedAllReviews(userId),
+      hasCompletedMinimumReviews(userId),
     ]);
 
   const stats = userStats || {

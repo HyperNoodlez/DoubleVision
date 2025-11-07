@@ -1,22 +1,27 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { hasUserCompletedAllReviews } from "@/lib/db/reviewAssignments";
-import { getUserLatestPhotoWithStats } from "@/lib/db/photos";
+import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
+import { getUserLatestPhotoWithStats, getPhotoWithStats } from "@/lib/db/photos";
 import { getApprovedReviewsByPhoto } from "@/lib/db/reviews";
 import RatingDistribution, { RatingSummary } from "@/components/RatingDistribution";
 
-export default async function FeedbackPage() {
+export default async function FeedbackPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ photoId?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user) {
     redirect("/login");
   }
 
+  const params = await searchParams;
   const userId = session.user.id;
 
   // Check if user has completed 5 reviews
-  const hasCompleted5Reviews = await hasUserCompletedAllReviews(userId);
+  const hasCompleted5Reviews = await hasCompletedMinimumReviews(userId);
 
   if (!hasCompleted5Reviews) {
     return (
@@ -35,8 +40,33 @@ export default async function FeedbackPage() {
     );
   }
 
-  // Get user's latest photo with stats
-  const photoData = await getUserLatestPhotoWithStats(userId);
+  // Get photo with stats - either specific photo from archive or latest photo
+  let photoData;
+  if (params.photoId) {
+    // Get specific photo from archive
+    photoData = await getPhotoWithStats(params.photoId);
+
+    // Verify the photo belongs to the current user
+    if (photoData && photoData.photo.userId !== userId) {
+      return (
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <div className="card max-w-md w-full text-center">
+            <div className="text-4xl mb-4">🔒</div>
+            <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+            <p className="text-text-secondary mb-6">
+              You can only view feedback for your own photos.
+            </p>
+            <Link href="/archive" className="btn-primary inline-block">
+              Back to Archive
+            </Link>
+          </div>
+        </div>
+      );
+    }
+  } else {
+    // Get user's latest photo with stats
+    photoData = await getUserLatestPhotoWithStats(userId);
+  }
 
   if (!photoData) {
     return (
@@ -148,10 +178,10 @@ export default async function FeedbackPage() {
         {/* Back Button */}
         <div className="card">
           <Link
-            href="/dashboard"
+            href={params.photoId ? "/archive" : "/dashboard"}
             className="text-text-secondary hover:text-text-primary transition-colors"
           >
-            ← Back to Dashboard
+            ← Back to {params.photoId ? "Archive" : "Dashboard"}
           </Link>
         </div>
       </div>

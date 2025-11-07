@@ -19,16 +19,21 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = session.user.id;
+    console.log(`📋 Fetching assignments for user: ${userId}`);
 
     // Get pending assignments
     let assignments = await getPendingAssignments(userId);
+    console.log(`📋 Found ${assignments.length} pending assignments`);
 
     // If no pending assignments, create new ones
     if (assignments.length === 0) {
+      console.log(`📋 No pending assignments, creating new ones...`);
       assignments = await assignPhotosToReviewer(userId, 5);
+      console.log(`📋 Created ${assignments.length} new assignments`);
 
       // Check if we got any assignments
       if (assignments.length === 0) {
+        console.log(`📋 No photos available for review`);
         return NextResponse.json(
           {
             assignments: [],
@@ -44,6 +49,7 @@ export async function GET(request: NextRequest) {
     const photosWithDetails = await Promise.all(
       assignments.map(async (assignment) => {
         const photo = await getPhotoById(assignment.photoId);
+        console.log(`  - Assignment ${assignment._id}: photoId=${assignment.photoId}, userId=${assignment.userId}, completed=${assignment.completed}`);
         return {
           assignmentId: assignment._id,
           photoId: assignment.photoId,
@@ -62,6 +68,8 @@ export async function GET(request: NextRequest) {
 
     // Get assignment stats
     const stats = await getUserAssignmentStats(userId);
+
+    console.log(`📋 Returning ${photosWithDetails.length} assignments with stats:`, stats);
 
     return NextResponse.json(
       {

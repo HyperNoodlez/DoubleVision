@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { put } from "@vercel/blob";
+import { writeFile } from "fs/promises";
+import { join } from "path";
 import { canUserUploadToday } from "@/lib/db/users";
-import { hasUserCompletedAllReviews } from "@/lib/db/reviewAssignments";
+import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { createPhoto } from "@/lib/db/photos";
 import { incrementPhotoCount } from "@/lib/db/users";
 
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has completed 5 reviews
-    const hasCompletedReviews = await hasUserCompletedAllReviews(userId);
+    const hasCompletedReviews = await hasCompletedMinimumReviews(userId);
     if (!hasCompletedReviews) {
       return NextResponse.json(
         {
@@ -78,16 +79,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upload to Vercel Blob Storage
-    const blob = await put(file.name, file, {
-      access: "public",
-      addRandomSuffix: true,
-    });
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(7);
+    const fileExtension = file.name.split('.').pop();
+    const filename = `${userId}-${timestamp}-${randomSuffix}.${fileExtension}`;
+
+    // Convert file to buffer and save to local filesystem
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Save to public/uploads directory
+    const filepath = join(process.cwd(), 'public', 'uploads', filename);
+    await writeFile(filepath, buffer);
+
+    // Create public URL (accessible at /uploads/filename)
+    const imageUrl = `/uploads/${filename}`;
 
     // Save photo metadata to database
     const photo = await createPhoto({
       userId,
-      imageUrl: blob.url,
+      imageUrl,
     });
 
     // Increment user's photo count

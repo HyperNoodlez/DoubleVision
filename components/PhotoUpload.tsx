@@ -17,12 +17,11 @@ export default function PhotoUpload({
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const validateAndPreviewFile = (file: File) => {
     // Validate file type
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
@@ -36,6 +35,9 @@ export default function PhotoUpload({
       return;
     }
 
+    // Store the file in state
+    setSelectedFile(file);
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -45,8 +47,44 @@ export default function PhotoUpload({
     reader.readAsDataURL(file);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    validateAndPreviewFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (disabled) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    validateAndPreviewFile(file);
+  };
+
   const handleUpload = async () => {
-    if (!fileInputRef.current?.files?.[0]) {
+    // Use selectedFile from state (for drag-and-drop) or file input
+    const fileToUpload = selectedFile || fileInputRef.current?.files?.[0];
+
+    if (!fileToUpload) {
       setError("Please select a photo first.");
       return;
     }
@@ -57,7 +95,7 @@ export default function PhotoUpload({
 
     try {
       const formData = new FormData();
-      formData.append("photo", fileInputRef.current.files[0]);
+      formData.append("photo", fileToUpload);
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -72,6 +110,7 @@ export default function PhotoUpload({
 
       setSuccess(data.message || "Photo uploaded successfully!");
       setPreview(null);
+      setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -89,6 +128,7 @@ export default function PhotoUpload({
     setPreview(null);
     setError(null);
     setSuccess(null);
+    setSelectedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -119,16 +159,25 @@ export default function PhotoUpload({
       {!preview ? (
         <div className="space-y-4">
           <div
-            className={`border-2 border-dashed border-border rounded-lg p-8 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
               disabled
-                ? "bg-absent/10 cursor-not-allowed"
-                : "hover:border-present cursor-pointer"
+                ? "bg-absent/10 cursor-not-allowed border-border"
+                : isDragging
+                ? "border-correct bg-correct/10 scale-105"
+                : "border-border hover:border-present cursor-pointer"
             }`}
             onClick={() => !disabled && fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
-            <div className="text-4xl mb-2">📸</div>
+            <div className="text-4xl mb-2">{isDragging ? "📥" : "📸"}</div>
             <p className="text-text-primary font-medium mb-1">
-              {disabled ? "Upload Disabled" : "Click to select a photo"}
+              {disabled
+                ? "Upload Disabled"
+                : isDragging
+                ? "Drop your photo here"
+                : "Click or drag & drop to upload"}
             </p>
             <p className="text-text-secondary text-sm">
               JPEG, PNG, or WebP (max 10MB)

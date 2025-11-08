@@ -5,6 +5,7 @@ import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { getUserLatestPhotoWithStats, getPhotoWithStats } from "@/lib/db/photos";
 import { getApprovedReviewsByPhoto } from "@/lib/db/reviews";
 import RatingDistribution, { RatingSummary } from "@/components/RatingDistribution";
+import GenerateTestReviews from "@/components/GenerateTestReviews";
 
 export default async function FeedbackPage({
   searchParams,
@@ -88,7 +89,7 @@ export default async function FeedbackPage({
   const { photo: latestPhoto, stats } = photoData;
 
   // Get approved reviews for the photo
-  const reviews = await getApprovedReviewsByPhoto(latestPhoto._id);
+  const reviews = await getApprovedReviewsByPhoto(latestPhoto._id.toString());
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -166,13 +167,20 @@ export default async function FeedbackPage({
             ))}
           </div>
         ) : (
-          <div className="card text-center">
-            <div className="text-4xl mb-4">⏳</div>
-            <h3 className="text-lg font-bold mb-2">No Reviews Yet</h3>
-            <p className="text-text-secondary">
-              Your photo is waiting to be reviewed. Check back soon!
-            </p>
-          </div>
+          <>
+            <div className="card text-center">
+              <div className="text-4xl mb-4">⏳</div>
+              <h3 className="text-lg font-bold mb-2">No Reviews Yet</h3>
+              <p className="text-text-secondary">
+                Your photo is waiting to be reviewed. Check back soon!
+              </p>
+            </div>
+
+            {/* Development mode: Generate test reviews */}
+            {process.env.NODE_ENV === "development" && (
+              <GenerateTestReviews photoId={latestPhoto._id.toString()} />
+            )}
+          </>
         )}
 
         {/* Back Button */}

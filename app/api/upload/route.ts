@@ -5,6 +5,8 @@ import { canUserUploadToday } from "@/lib/db/users";
 import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { createPhoto } from "@/lib/db/photos";
 import { incrementPhotoCount } from "@/lib/db/users";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -36,9 +38,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user has completed 5 reviews
+    // Check if user has completed 5 reviews (skip in development mode)
+    const isDevelopment = process.env.NODE_ENV === "development";
     const hasCompletedReviews = await hasCompletedMinimumReviews(userId);
-    if (!hasCompletedReviews) {
+
+    if (!hasCompletedReviews && !isDevelopment) {
       return NextResponse.json(
         {
           error:
@@ -46,6 +50,10 @@ export async function POST(request: NextRequest) {
         },
         { status: 403 }
       );
+    }
+
+    if (isDevelopment && !hasCompletedReviews) {
+      console.log("⚠️ Development mode: Bypassing 5-review requirement");
     }
 
     // Parse the multipart form data
@@ -82,16 +90,42 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(7);
     const fileExtension = file.name.split('.').pop();
-    const filename = `photos/${userId}-${timestamp}-${randomSuffix}.${fileExtension}`;
+    const filename = `${userId}-${timestamp}-${randomSuffix}.${fileExtension}`;
 
-    // Upload to Vercel Blob Storage
-    const blob = await put(filename, file, {
-      access: 'public',
-      addRandomSuffix: false,
-    });
+    let imageUrl: string;
 
-    // Use the Vercel Blob URL
-    const imageUrl = blob.url;
+    // Check if Vercel Blob is configured
+    const useBlobStorage = !!process.env.BLOB_READ_WRITE_TOKEN;
+
+    if (useBlobStorage) {
+      // Production: Upload to Vercel Blob Storage
+      const blob = await put(`photos/${filename}`, file, {
+        access: 'public',
+        addRandomSuffix: false,
+      });
+      imageUrl = blob.url;
+    } else {
+      // Development: Save to local public folder
+      console.log("⚠️ BLOB_READ_WRITE_TOKEN not found. Using local storage for development.");
+
+      // Create public/uploads directory if it doesn't exist
+      const uploadsDir = join(process.cwd(), 'public', 'uploads');
+      try {
+        await mkdir(uploadsDir, { recursive: true });
+      } catch (err) {
+        // Directory might already exist, ignore error
+      }
+
+      // Save file to public/uploads
+      const filepath = join(uploadsDir, filename);
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      await writeFile(filepath, buffer);
+
+      // Use local URL
+      imageUrl = `/uploads/${filename}`;
+      console.log(`📁 File saved locally: ${imageUrl}`);
+    }
 
     // Save photo metadata to database
     const photo = await createPhoto({

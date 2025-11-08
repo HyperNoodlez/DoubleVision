@@ -35,15 +35,17 @@ export default async function DashboardPage() {
   };
 
   // Determine upload disabled reason
+  const isDevelopment = process.env.NODE_ENV === "development";
   let uploadDisabledReason = "";
+
   if (!canUpload) {
     uploadDisabledReason =
       "You've already uploaded a photo today. Come back tomorrow!";
-  } else if (!hasCompleted5Reviews) {
+  } else if (!hasCompleted5Reviews && !isDevelopment) {
     uploadDisabledReason = `Complete ${5 - completedReviews} more reviews to unlock photo upload.`;
   }
 
-  const canUploadPhoto = canUpload && hasCompleted5Reviews;
+  const canUploadPhoto = canUpload && (hasCompleted5Reviews || isDevelopment);
 
   return (
     <div className="min-h-screen flex flex-col py-8 px-4">
@@ -111,6 +113,21 @@ export default async function DashboardPage() {
             {completedReviews} of 5 reviews completed today
           </p>
         </div>
+
+        {/* Development Mode Notice */}
+        {isDevelopment && !hasCompleted5Reviews && (
+          <div className="card border-2 border-dashed border-present bg-present/5">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">🧪</div>
+              <div>
+                <h3 className="font-bold text-present">Development Mode</h3>
+                <p className="text-sm text-text-secondary">
+                  Review requirement bypassed for testing. Upload is enabled!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Photo Upload */}
         <PhotoUpload

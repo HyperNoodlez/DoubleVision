@@ -23,7 +23,7 @@ export interface UserDocument {
   email: string;
   image?: string;
   emailVerified?: Date;
-  provider: "google" | "github";
+  provider: "google" | "github" | "test";
   eloRating: number;
   totalReviews: number;
   photoCount: number;

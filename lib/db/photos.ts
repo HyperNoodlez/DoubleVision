@@ -95,19 +95,39 @@ export async function updatePhotoStatus(
   status: "pending" | "reviewed" | "archived"
 ): Promise<void> {
   const collection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
-  await collection.updateOne(
+
+  // Try string comparison first
+  let result = await collection.updateOne(
     { _id: photoId },
     { $set: { status } }
   );
+
+  // If not found with string, try ObjectId
+  if (result.matchedCount === 0 && ObjectId.isValid(photoId)) {
+    await collection.updateOne(
+      { _id: new ObjectId(photoId) as any },
+      { $set: { status } }
+    );
+  }
 }
 
 // Increment review count for a photo
 export async function incrementPhotoReviewCount(photoId: string): Promise<void> {
   const collection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
-  await collection.updateOne(
+
+  // Try string comparison first
+  let result = await collection.updateOne(
     { _id: photoId },
     { $inc: { reviewsReceived: 1 } }
   );
+
+  // If not found with string, try ObjectId
+  if (result.matchedCount === 0 && ObjectId.isValid(photoId)) {
+    await collection.updateOne(
+      { _id: new ObjectId(photoId) as any },
+      { $inc: { reviewsReceived: 1 } }
+    );
+  }
 }
 
 // Update average score for a photo
@@ -116,10 +136,20 @@ export async function updatePhotoAverageScore(
   averageScore: number
 ): Promise<void> {
   const collection = await getCollection<PhotoDocument>(COLLECTIONS.PHOTOS);
-  await collection.updateOne(
+
+  // Try string comparison first
+  let result = await collection.updateOne(
     { _id: photoId },
     { $set: { averageScore } }
   );
+
+  // If not found with string, try ObjectId
+  if (result.matchedCount === 0 && ObjectId.isValid(photoId)) {
+    await collection.updateOne(
+      { _id: new ObjectId(photoId) as any },
+      { $set: { averageScore } }
+    );
+  }
 }
 
 // Get user's most recent photo
@@ -209,7 +239,7 @@ export async function getUserLatestPhotoWithStats(userId: string): Promise<{
 
   // Import getReviewsByPhoto dynamically to avoid circular dependency
   const { getApprovedReviewsByPhoto } = await import("./reviews");
-  const reviews = await getApprovedReviewsByPhoto(photo._id);
+  const reviews = await getApprovedReviewsByPhoto(photo._id.toString());
 
   // Calculate rating distribution
   const ratingDistribution: { [key: number]: number } = {

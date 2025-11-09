@@ -15,8 +15,7 @@ export default function ReviewCard({
   photoId,
   onSubmitReview,
 }: ReviewCardProps) {
-  const [rating, setRating] = useState<number>(0);
-  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [score, setScore] = useState<number>(0);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +27,9 @@ export default function ReviewCard({
     e.preventDefault();
     setError(null);
 
-    // Validate rating
-    if (rating === 0) {
-      setError("Please select a star rating.");
+    // Validate score
+    if (score === 0) {
+      setError("Please set a score for this photo.");
       return;
     }
 
@@ -45,9 +44,9 @@ export default function ReviewCard({
     setIsSubmitting(true);
 
     try {
-      await onSubmitReview(photoId, rating, comment);
+      await onSubmitReview(photoId, score, comment);
       // Reset form after successful submission
-      setRating(0);
+      setScore(0);
       setComment("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit review");
@@ -71,37 +70,49 @@ export default function ReviewCard({
 
       {/* Review Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Star Rating */}
+        {/* Score Slider */}
         <div>
           <label className="block text-sm font-bold mb-3">
-            Rating <span className="text-error">*</span>
+            Score <span className="text-error">*</span>
           </label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => setRating(star)}
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                className="star transition-transform hover:scale-110"
-              >
-                <span
-                  className={
-                    star <= (hoverRating || rating)
-                      ? "text-present"
-                      : "text-border"
-                  }
-                >
-                  ★
-                </span>
-              </button>
-            ))}
-            {rating > 0 && (
-              <span className="ml-3 text-text-secondary self-center">
-                {rating} {rating === 1 ? "star" : "stars"}
-              </span>
-            )}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Rate this photo from 0 to 100</span>
+              <div className="text-4xl font-bold text-present">
+                {score}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-text-secondary">0</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={score}
+                onChange={(e) => setScore(parseInt(e.target.value))}
+                className="flex-1 h-3 bg-surface rounded-lg appearance-none cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-present
+                  [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-correct
+                  [&::-webkit-slider-thumb]:shadow-lg
+                  [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6
+                  [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-present
+                  [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:hover:bg-correct
+                  [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-lg"
+                style={{
+                  background: `linear-gradient(to right, rgb(var(--color-present)) 0%, rgb(var(--color-present)) ${score}%, rgb(var(--color-surface)) ${score}%, rgb(var(--color-surface)) 100%)`
+                }}
+              />
+              <span className="text-xs text-text-secondary">100</span>
+            </div>
+            <div className="text-xs text-center text-text-secondary">
+              {score === 0 && "Move the slider to set a score"}
+              {score > 0 && score < 40 && "Poor"}
+              {score >= 40 && score < 60 && "Below Average"}
+              {score >= 60 && score < 75 && "Average"}
+              {score >= 75 && score < 90 && "Good"}
+              {score >= 90 && "Excellent"}
+            </div>
           </div>
         </div>
 
@@ -142,7 +153,7 @@ export default function ReviewCard({
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={isSubmitting || !rating || !isValidWordCount}
+          disabled={isSubmitting || score === 0 || !isValidWordCount}
           className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Submitting..." : "Submit Review"}

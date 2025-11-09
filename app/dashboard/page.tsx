@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PhotoUpload from "@/components/PhotoUpload";
 import RatingDisplay, { RatingProgress } from "@/components/RatingDisplay";
+import StrikeStatus from "@/components/StrikeStatus";
 import { getUserStats, canUserUploadToday } from "@/lib/db/users";
 import {
   getTodayCompletedReviewCount,
@@ -92,6 +93,9 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Strike Status */}
+        <StrikeStatus />
 
         {/* Today&apos;s Challenge */}
         <div className="card">

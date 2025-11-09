@@ -4,8 +4,10 @@ import Link from "next/link";
 import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { getUserLatestPhotoWithStats, getPhotoWithStats } from "@/lib/db/photos";
 import { getApprovedReviewsByPhoto } from "@/lib/db/reviews";
-import RatingDistribution, { RatingSummary } from "@/components/RatingDistribution";
-import GenerateTestReviews from "@/components/GenerateTestReviews";
+import { ScoreSummary, ScoreDisplay } from "@/components/ScoreDisplay";
+import ReviewRating from "@/components/ReviewRating";
+import RatedReviews from "@/components/RatedReviews";
+import { hasPhotoBeenRated } from "@/lib/db/reviewRatings";
 
 export default async function FeedbackPage({
   searchParams,
@@ -91,6 +93,9 @@ export default async function FeedbackPage({
   // Get approved reviews for the photo
   const reviews = await getApprovedReviewsByPhoto(latestPhoto._id.toString());
 
+  // Check if user has already rated this photo's reviews
+  const hasBeenRated = await hasPhotoBeenRated(latestPhoto._id.toString());
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -114,58 +119,70 @@ export default async function FeedbackPage({
               />
             </div>
             <div className="space-y-6">
-              {/* Average Rating Summary */}
-              <div>
-                <h3 className="text-lg font-bold mb-3">Rating Summary</h3>
-                <RatingSummary
-                  averageScore={stats.averageScore}
-                  totalReviews={stats.totalReviews}
-                />
-              </div>
-
-              {/* Rating Distribution */}
-              <div>
-                <h3 className="text-lg font-bold mb-3">Rating Distribution</h3>
-                <RatingDistribution
-                  distribution={stats.ratingDistribution}
-                  totalReviews={stats.totalReviews}
-                />
-              </div>
+              {/* Score Summary */}
+              {stats.averageScore !== undefined && (
+                <div>
+                  <h3 className="text-lg font-bold mb-3">Your Score</h3>
+                  <ScoreSummary
+                    averageScore={stats.averageScore}
+                    totalReviews={stats.totalReviews}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Reviews */}
-        {reviews.length > 0 ? (
-          <div className="space-y-4">
-            {reviews.map((review, index) => (
-              <div key={review._id} className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        className={`text-xl ${
-                          star <= review.score ? "text-present" : "text-border"
-                        }`}
-                      >
-                        ★
-                      </span>
-                    ))}
+        {reviews.length === 5 && hasBeenRated ? (
+          // Photo has 5 reviews and has been rated - show reviewers
+          <RatedReviews photoId={latestPhoto._id.toString()} />
+        ) : reviews.length === 5 && !hasBeenRated ? (
+          // Photo has 5 reviews but hasn't been rated - show rating UI
+          <ReviewRating
+            photoId={latestPhoto._id.toString()}
+            reviews={reviews.map((r) => ({
+              _id: r._id.toString(),
+              score: r.score,
+              comment: r.comment,
+              wordCount: r.wordCount,
+              createdAt: r.createdAt,
+            }))}
+          />
+        ) : reviews.length > 0 ? (
+          // Photo has some reviews but not 5 yet - show progress
+          <>
+            <div className="card text-center">
+              <div className="text-4xl mb-4">⏳</div>
+              <h3 className="text-lg font-bold mb-2">
+                {reviews.length}/5 Reviews Received
+              </h3>
+              <p className="text-text-secondary">
+                Your photo needs {5 - reviews.length} more review
+                {5 - reviews.length > 1 ? "s" : ""} before you can rate them.
+              </p>
+            </div>
+
+            {/* Show received reviews with scores */}
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review._id} className="card">
+                  <div className="flex items-center justify-between mb-3">
+                    <ScoreDisplay score={review.score} size="sm" showLabel={false} />
+                    <div className="text-sm text-text-secondary">
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
-                  <div className="text-sm text-text-secondary">
-                    {new Date(review.createdAt).toLocaleDateString()}
+                  <p className="text-text-primary leading-relaxed whitespace-pre-wrap">
+                    {review.comment}
+                  </p>
+                  <div className="mt-3 text-sm text-text-secondary">
+                    {review.wordCount} words
                   </div>
                 </div>
-                <p className="text-text-primary leading-relaxed whitespace-pre-wrap">
-                  {review.comment}
-                </p>
-                <div className="mt-3 text-sm text-text-secondary">
-                  {review.wordCount} words
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div className="card text-center">
@@ -175,11 +192,6 @@ export default async function FeedbackPage({
                 Your photo is waiting to be reviewed. Check back soon!
               </p>
             </div>
-
-            {/* Development mode: Generate test reviews */}
-            {process.env.NODE_ENV === "development" && (
-              <GenerateTestReviews photoId={latestPhoto._id.toString()} />
-            )}
           </>
         )}
 

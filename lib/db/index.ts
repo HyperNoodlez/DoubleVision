@@ -8,6 +8,7 @@ export const COLLECTIONS = {
   PHOTOS: "photos",
   REVIEWS: "reviews",
   REVIEW_ASSIGNMENTS: "reviewAssignments",
+  REVIEW_RATINGS: "reviewRatings",
 } as const;
 
 // Get database instance
@@ -64,6 +65,16 @@ export async function initializeIndexes(): Promise<void> {
       { key: { assignedAt: -1 } },
       // Compound unique index to prevent duplicate assignments
       { key: { userId: 1, photoId: 1 }, unique: true },
+    ]);
+
+    // ReviewRatings collection indexes
+    await db.collection(COLLECTIONS.REVIEW_RATINGS).createIndexes([
+      { key: { reviewId: 1 } },
+      { key: { photoId: 1 } },
+      { key: { ratedBy: 1 } },
+      { key: { createdAt: -1 } },
+      // Compound unique index to prevent duplicate ratings
+      { key: { reviewId: 1, ratedBy: 1 }, unique: true },
     ]);
 
     console.log("✅ Database indexes created successfully");

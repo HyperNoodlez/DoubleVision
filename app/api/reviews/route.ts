@@ -151,8 +151,6 @@ export async function POST(request: NextRequest) {
     // Run moderation synchronously and get strike information
     const moderationResult = await moderateReviewAsync(review._id, userId, photoId, trimmedComment, wordCount);
 
-    console.log("🔍 Moderation result to send to client:", JSON.stringify(moderationResult, null, 2));
-
     return NextResponse.json(
       {
         success: true,
@@ -191,7 +189,7 @@ async function moderateReviewAsync(
   status: string;
   strikes?: number;
   isTimedOut?: boolean;
-  timeoutUntil?: Date;
+  timeoutUntil?: string;
 }> {
   try {
     // Perform AI moderation

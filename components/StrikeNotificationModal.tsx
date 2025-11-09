@@ -17,26 +17,18 @@ export default function StrikeNotificationModal({
   isTimedOut,
   timeoutUntil,
 }: StrikeNotificationModalProps) {
-  // Debug logging
-  useEffect(() => {
-    console.log("StrikeNotificationModal state:", { isOpen, strikes, isTimedOut, timeoutUntil });
-  }, [isOpen, strikes, isTimedOut, timeoutUntil]);
-
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     if (isOpen) {
-      console.log("Modal is now open!");
       document.addEventListener("keydown", handleEscape);
       return () => document.removeEventListener("keydown", handleEscape);
     }
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  console.log("Rendering modal!");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

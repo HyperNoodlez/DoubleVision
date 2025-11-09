@@ -30,6 +30,7 @@ export async function createOrUpdateUser(data: {
         totalReviews: 0,
         photoCount: 0,
         joinedAt: now,
+        strikes: 0, // Strike count for moderation violations
       },
     },
     { upsert: true, returnDocument: "after" }

@@ -29,6 +29,9 @@ export interface UserDocument {
   photoCount: number;
   joinedAt: Date;
   lastUpload?: Date;
+  strikes: number; // Number of moderation strikes (reset after timeout)
+  strikeTimeout?: Date; // When timeout expires (null if not timed out)
+  lastStrikeDate?: Date; // When the last strike was received
 }
 
 export interface PhotoDocument {
@@ -39,13 +42,15 @@ export interface PhotoDocument {
   reviewsReceived: number;
   averageScore?: number;
   status: "pending" | "reviewed" | "archived";
+  allReviewsRated?: boolean;
+  reviewsRatedCount?: number;
 }
 
 export interface ReviewDocument {
   _id: string;
   photoId: string;
   reviewerId: string;
-  score: number;
+  score: number; // 0-100 point scale
   comment: string;
   wordCount: number;
   moderationStatus: "pending" | "approved" | "rejected";
@@ -57,6 +62,8 @@ export interface ReviewDocument {
     reasoning: string;
   };
   createdAt: Date;
+  helpfulnessScore?: number;
+  helpfulnessCount?: number;
 }
 
 export interface ReviewAssignmentDocument {
@@ -66,4 +73,17 @@ export interface ReviewAssignmentDocument {
   completed: boolean;
   assignedAt: Date;
   completedAt?: Date;
+}
+
+export interface ReviewRatingDocument {
+  _id: string;
+  reviewId: string;
+  photoId: string;
+  ratedBy: string;
+  // Multi-dimensional ratings (1-5 scale for each)
+  specificityScore: number; // How detailed and specific
+  constructivenessScore: number; // How actionable and helpful
+  relevanceScore: number; // How relevant to the photo
+  overallQuality: number; // Calculated average of the three
+  createdAt: Date;
 }

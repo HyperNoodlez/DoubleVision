@@ -103,11 +103,11 @@ export function validateReviewScore(score: any): {
     };
   }
 
-  if (numScore < 1 || numScore > 5) {
+  if (numScore < 1 || numScore > 100) {
     return {
       valid: false,
       value: numScore,
-      error: 'Score must be between 1 and 5',
+      error: 'Score must be between 1 and 100',
     };
   }
 

@@ -37,7 +37,9 @@ export async function addStrike(userId: string): Promise<{
         $set: {
           strikes: 1, // This rejection counts as first strike
           lastStrikeDate: now,
-          strikeTimeout: null,
+        },
+        $unset: {
+          strikeTimeout: "",
         },
       }
     );
@@ -127,8 +129,10 @@ export async function isUserTimedOut(userId: string): Promise<{
       {
         $set: {
           strikes: 0,
-          strikeTimeout: null,
-          lastStrikeDate: null,
+        },
+        $unset: {
+          lastStrikeDate: "",
+          strikeTimeout: "",
         },
       }
     );
@@ -203,8 +207,10 @@ export async function resetStrikes(userId: string): Promise<void> {
     {
       $set: {
         strikes: 0,
-        strikeTimeout: null,
-        lastStrikeDate: null,
+      },
+      $unset: {
+        strikeTimeout: "",
+        lastStrikeDate: "",
       },
     }
   );

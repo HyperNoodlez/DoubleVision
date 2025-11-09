@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { MODERATOR_CONFIG, buildModerationPrompt } from "@/config/moderator";
 
 if (!process.env.GEMINI_API_KEY) {
   console.warn(
@@ -11,9 +12,9 @@ const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
-// Use Gemini 2.5 Flash for fast, efficient moderation
+// Use configured Gemini model for fast, efficient moderation
 const model = genAI?.getGenerativeModel({
-  model: "gemini-2.5-flash",
+  model: MODERATOR_CONFIG.model,
 });
 
 export interface ModerationResult {
@@ -45,30 +46,8 @@ export async function moderateReview(
   }
 
   try {
-    const prompt = `You are a content moderation system for a photography feedback platform. Analyze the following review comment and determine:
-
-1. Is it offensive, inappropriate, or contains hate speech/harassment?
-2. Does it appear to be AI-generated (generic, template-like, lacks personal perspective)?
-3. Is it relevant and constructive feedback about photography?
-
-Review comment:
-"${comment}"
-
-Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
-{
-  "isOffensive": boolean,
-  "isAiGenerated": boolean,
-  "isRelevant": boolean,
-  "confidence": number (0-100),
-  "reasoning": "brief explanation"
-}
-
-Guidelines:
-- isOffensive: true if contains profanity, harassment, hate speech, or personal attacks
-- isAiGenerated: true if overly generic, template-like, or clearly AI-written
-- isRelevant: false if spam, off-topic, or not about photography
-- confidence: 0-100, how confident you are in this assessment
-- reasoning: 1-2 sentences explaining the decision`;
+    // Build moderation prompt using configuration
+    const prompt = buildModerationPrompt(comment);
 
     const result = await model.generateContent(prompt);
     const response = result.response;
@@ -111,25 +90,28 @@ Guidelines:
 
 /**
  * Determine if a review should be approved based on moderation results
+ * Uses confidence thresholds from MODERATOR_CONFIG
  * @param moderation The moderation analysis
  * @returns "approved" or "rejected"
  */
 export function getModerationDecision(
   moderation: ModerationResult
 ): "approved" | "rejected" {
+  const { offensiveConfidence, irrelevanceConfidence } = MODERATOR_CONFIG.thresholds;
+
   // Reject if offensive with high confidence
-  if (moderation.isOffensive && moderation.confidence >= 70) {
+  if (moderation.isOffensive && moderation.confidence >= offensiveConfidence) {
     return "rejected";
   }
 
   // Reject if not relevant with high confidence
-  if (!moderation.isRelevant && moderation.confidence >= 80) {
+  if (!moderation.isRelevant && moderation.confidence >= irrelevanceConfidence) {
     return "rejected";
   }
 
   // Flag AI-generated but don't auto-reject (user may have used AI for help)
   // Just store the flag for potential review
 
-  // Default to approved
+  // Default to approved (bias toward allowing content)
   return "approved";
 }

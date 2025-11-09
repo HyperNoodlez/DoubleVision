@@ -11,6 +11,8 @@ import { getUserById, updateUserElo } from "@/lib/db/users";
 import { createModerationAlertIssue, type ModerationAlert } from "@/lib/linear";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { validateReviewComment, validateReviewScore, validateObjectId } from "@/lib/validation";
+import { MODERATOR_CONFIG } from "@/config/moderator";
+import { isUserTimedOut, addStrike } from "@/lib/db/strikes";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +26,22 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id;
+
+    // Check if user is timed out due to strikes
+    const timeoutStatus = await isUserTimedOut(userId);
+    if (timeoutStatus.isTimedOut && timeoutStatus.timeoutUntil) {
+      const timeRemaining = Math.ceil((timeoutStatus.timeoutUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return NextResponse.json(
+        {
+          error: "You are temporarily unable to submit reviews due to repeated violations of our community guidelines.",
+          timedOut: true,
+          timeoutUntil: timeoutStatus.timeoutUntil.toISOString(),
+          strikes: timeoutStatus.strikes,
+          daysRemaining: timeRemaining,
+        },
+        { status: 403 }
+      );
+    }
 
     // Rate limiting
     const rateLimitResult = checkRateLimit(
@@ -130,9 +148,10 @@ export async function POST(request: NextRequest) {
     // Increment user's review count
     await incrementReviewCount(userId);
 
-    // Trigger AI moderation and ELO update asynchronously (don't block response)
-    // This runs in the background and updates the review status
-    moderateReviewAsync(review._id, userId, photoId, trimmedComment, wordCount);
+    // Run moderation synchronously and get strike information
+    const moderationResult = await moderateReviewAsync(review._id, userId, photoId, trimmedComment, wordCount);
+
+    console.log("🔍 Moderation result to send to client:", JSON.stringify(moderationResult, null, 2));
 
     return NextResponse.json(
       {
@@ -144,6 +163,7 @@ export async function POST(request: NextRequest) {
           createdAt: review.createdAt,
         },
         message: "Review submitted successfully! 🎉",
+        moderation: moderationResult,
       },
       { status: 201 }
     );
@@ -159,8 +179,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Moderate a review asynchronously in the background
- * This doesn't block the API response
+ * Moderate a review and return moderation + strike information
  */
 async function moderateReviewAsync(
   reviewId: string,
@@ -168,7 +187,12 @@ async function moderateReviewAsync(
   photoId: string,
   comment: string,
   wordCount: number
-) {
+): Promise<{
+  status: string;
+  strikes?: number;
+  isTimedOut?: boolean;
+  timeoutUntil?: Date;
+}> {
   try {
     // Perform AI moderation
     const aiAnalysis = await moderateReview(comment);
@@ -182,7 +206,8 @@ async function moderateReviewAsync(
     console.log(`✅ Review ${reviewId} moderated: ${moderationStatus}`);
 
     // If moderation rejected the review with high confidence, create Linear alert
-    if (moderationStatus === "rejected" && aiAnalysis.confidence >= 70) {
+    const linearAlertThreshold = MODERATOR_CONFIG.thresholds.linearAlertConfidence;
+    if (moderationStatus === "rejected" && aiAnalysis.confidence >= linearAlertThreshold) {
       const reason = aiAnalysis.isOffensive
         ? "offensive"
         : aiAnalysis.isRelevant === false
@@ -208,6 +233,33 @@ async function moderateReviewAsync(
       console.log(
         `🚨 High-confidence rejection (${aiAnalysis.confidence}%) - Linear alert created`
       );
+    }
+
+    // Add strike for rejected review and return strike info
+    let strikeInfo: { strikes?: number; isTimedOut?: boolean; timeoutUntil?: Date } = {};
+    if (moderationStatus === "rejected") {
+      try {
+        const strikeResult = await addStrike(reviewerId);
+
+        strikeInfo = {
+          strikes: strikeResult.strikes,
+          isTimedOut: strikeResult.isTimedOut,
+          timeoutUntil: strikeResult.timeoutUntil,
+        };
+
+        if (strikeResult.isTimedOut && strikeResult.timeoutUntil) {
+          console.log(
+            `⛔ User ${reviewerId} has been timed out until ${strikeResult.timeoutUntil.toISOString()} (${strikeResult.strikes} strikes)`
+          );
+        } else {
+          console.log(
+            `⚠️ Strike added to user ${reviewerId}: ${strikeResult.strikes}/3 strikes`
+          );
+        }
+      } catch (strikeError) {
+        console.error(`❌ Failed to add strike for reviewer ${reviewerId}:`, strikeError);
+        // Don't throw - moderation succeeded, strike is secondary
+      }
     }
 
     // Update reviewer's ELO rating based on moderation results
@@ -237,6 +289,13 @@ async function moderateReviewAsync(
       console.error(`❌ Failed to update ELO for reviewer ${reviewerId}:`, eloError);
       // Don't throw - moderation succeeded, ELO update is secondary
     }
+
+    return {
+      status: moderationStatus,
+      strikes: strikeInfo.strikes,
+      isTimedOut: strikeInfo.isTimedOut,
+      timeoutUntil: strikeInfo.timeoutUntil?.toISOString(),
+    };
   } catch (error) {
     console.error(`❌ Failed to moderate review ${reviewId}:`, error);
     // On error, default to approved to avoid blocking user experience
@@ -251,5 +310,9 @@ async function moderateReviewAsync(
     } catch (updateError) {
       console.error("Failed to update review after moderation error:", updateError);
     }
+
+    return {
+      status: "approved",
+    };
   }
 }

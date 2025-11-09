@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ReviewCard from "@/components/ReviewCard";
 import { RatingBadge } from "@/components/RatingDisplay";
+import ClearReviewsButton from "@/components/ClearReviewsButton";
+import StrikeNotificationModal from "@/components/StrikeNotificationModal";
 
 interface Assignment {
   assignmentId: string;
@@ -33,6 +35,14 @@ export default function ReviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [userRating, setUserRating] = useState<number>(1000);
+
+  // Strike notification state
+  const [showStrikeModal, setShowStrikeModal] = useState(false);
+  const [strikeData, setStrikeData] = useState<{
+    strikes: number;
+    isTimedOut: boolean;
+    timeoutUntil?: string;
+  } | null>(null);
 
   // Fetch assignments and user rating on mount
   useEffect(() => {
@@ -105,14 +115,44 @@ export default function ReviewPage() {
 
       const data = await response.json();
 
+      console.log("📦 Review API Response:", data);
+
       if (!response.ok) {
+        // Check if timed out
+        if (data.timedOut) {
+          setStrikeData({
+            strikes: data.strikes,
+            isTimedOut: true,
+            timeoutUntil: data.timeoutUntil,
+          });
+          setShowStrikeModal(true);
+        }
         throw new Error(data.error || "Failed to submit review");
       }
 
       // Show success message
       setSuccessMessage(data.message || "Review submitted successfully!");
 
-      // Move to next photo after 1.5 seconds
+      // Check if moderation resulted in a strike (strikes can be any number >= 1)
+      if (data.moderation && data.moderation.strikes !== undefined && data.moderation.strikes > 0) {
+        console.log("🚨 STRIKE DETECTED! Strike info:", data.moderation);
+        console.log("Setting strike data and opening modal...");
+
+        const strikeInfo = {
+          strikes: data.moderation.strikes,
+          isTimedOut: data.moderation.isTimedOut || false,
+          timeoutUntil: data.moderation.timeoutUntil,
+        };
+
+        console.log("Strike info to set:", strikeInfo);
+        setStrikeData(strikeInfo);
+        setShowStrikeModal(true);
+        console.log("Modal should now be open!");
+      } else {
+        console.log("✅ No strikes in response (review approved)");
+      }
+
+      // Move to next photo after 2 seconds (or wait for modal to be closed)
       setTimeout(() => {
         if (currentIndex < assignments.length - 1) {
           setCurrentIndex(currentIndex + 1);
@@ -121,7 +161,7 @@ export default function ReviewPage() {
           // All reviews completed, redirect to dashboard
           router.push("/dashboard");
         }
-      }, 1500);
+      }, 2000);
     } catch (err) {
       throw err; // Re-throw to let ReviewCard handle the error
     }
@@ -156,15 +196,18 @@ export default function ReviewPage() {
   if (assignments.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="card max-w-md w-full text-center">
-          <div className="text-4xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold mb-2">All Done!</h2>
-          <p className="text-text-secondary mb-4">
-            You&apos;ve completed all your reviews. Great job!
-          </p>
-          <button onClick={() => router.push("/dashboard")} className="btn-primary">
-            Return to Dashboard
-          </button>
+        <div className="max-w-md w-full space-y-4">
+          <div className="card text-center">
+            <div className="text-4xl mb-4">🎉</div>
+            <h2 className="text-xl font-bold mb-2">All Done!</h2>
+            <p className="text-text-secondary mb-4">
+              You&apos;ve completed all your reviews. Great job!
+            </p>
+            <button onClick={() => router.push("/dashboard")} className="btn-primary">
+              Return to Dashboard
+            </button>
+          </div>
+          <ClearReviewsButton />
         </div>
       </div>
     );
@@ -246,7 +289,50 @@ export default function ReviewPage() {
             </p>
           </div>
         </div>
+
+        {/* Testing Tools (Dev Only) */}
+        <ClearReviewsButton
+          photoId={currentAssignment.photoId}
+          onReviewSubmitted={() => {
+            // Move to next photo after a brief delay
+            setTimeout(() => {
+              if (currentIndex < assignments.length - 1) {
+                setCurrentIndex(currentIndex + 1);
+              } else {
+                router.push("/dashboard");
+              }
+            }, 3000);
+          }}
+          onStrikeReceived={(strikes, isTimedOut, timeoutUntil) => {
+            console.log("📣 Strike received from test button:", { strikes, isTimedOut, timeoutUntil });
+            setStrikeData({ strikes, isTimedOut, timeoutUntil });
+            setShowStrikeModal(true);
+          }}
+        />
       </div>
+
+      {/* Strike Notification Modal */}
+      <StrikeNotificationModal
+        isOpen={showStrikeModal}
+        onClose={() => setShowStrikeModal(false)}
+        strikes={strikeData?.strikes || 0}
+        isTimedOut={strikeData?.isTimedOut || false}
+        timeoutUntil={strikeData?.timeoutUntil}
+      />
+
+      {/* Debug: Test Modal Button (Development Only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <button
+          onClick={() => {
+            console.log("🧪 Testing modal...");
+            setStrikeData({ strikes: 1, isTimedOut: false });
+            setShowStrikeModal(true);
+          }}
+          className="fixed bottom-4 left-4 bg-yellow-500 text-black px-4 py-2 rounded z-50 text-sm"
+        >
+          Test Modal
+        </button>
+      )}
     </div>
   );
 }

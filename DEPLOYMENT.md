@@ -1,343 +1,411 @@
-# DoubleVision Deployment Guide
+# DoubleVision - Beta Deployment Guide
 
-This guide will walk you through deploying DoubleVision to production on Vercel.
+This guide will walk you through deploying DoubleVision to production for beta testing.
 
 ## Prerequisites
 
-Before deploying, ensure you have:
-- A [Vercel](https://vercel.com) account
-- A [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) account
-- A [Google Cloud Console](https://console.cloud.google.com) account for OAuth
-- A [GitHub](https://github.com) account for OAuth
-- A [Google AI Studio](https://makersuite.google.com/app/apikey) account for Gemini API
-- (Optional) A [Linear](https://linear.app) account for issue tracking
+- [x] GitHub repository set up (git@github.com:HyperNoodlez/DoubleVision.git)
+- [ ] Vercel account (sign up at https://vercel.com)
+- [ ] MongoDB Atlas account (if not already set up)
+- [ ] Google OAuth credentials (for production domain)
+- [ ] GitHub OAuth credentials (for production domain)
+- [ ] Gemini API key
 
-## Step 1: MongoDB Atlas Setup
+## Deployment Strategy
 
-### 1.1 Create a Cluster
+For beta testing, we'll use **Vercel's Preview Deployments** which gives you:
+- Automatic deployments on every git push
+- Unique URL for beta testing (e.g., `doublevision-xyz.vercel.app`)
+- Easy rollback if issues occur
+- Free tier supports beta testing
 
-1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Sign in or create an account
-3. Click "Build a Database"
-4. Choose the **FREE** tier (M0 Sandbox)
-5. Select your preferred cloud provider and region (choose closest to your users)
-6. Name your cluster (e.g., "doublevision")
-7. Click "Create Cluster"
+## Step 1: Push Code to GitHub
 
-### 1.2 Configure Network Access
-
-1. In the Atlas dashboard, click "Network Access" in the left sidebar
-2. Click "Add IP Address"
-3. Click "Allow Access from Anywhere" (for development)
-   - For production, you can restrict to Vercel's IP ranges
-4. Click "Confirm"
-
-### 1.3 Create a Database User
-
-1. Click "Database Access" in the left sidebar
-2. Click "Add New Database User"
-3. Choose "Password" authentication
-4. Enter a username (e.g., "doublevision-app")
-5. Click "Autogenerate Secure Password" and **save this password**
-6. Set privileges to "Read and write to any database"
-7. Click "Add User"
-
-### 1.4 Get Connection String
-
-1. Click "Database" in the left sidebar
-2. Click "Connect" on your cluster
-3. Choose "Connect your application"
-4. Select "Node.js" driver and version "5.5 or later"
-5. Copy the connection string
-6. Replace `<password>` with the password you saved earlier
-7. Replace `<database>` with `doublevision`
-
-Your connection string should look like:
-```
-mongodb+srv://doublevision-app:<password>@cluster0.xxxxx.mongodb.net/doublevision?retryWrites=true&w=majority
+```bash
+# You should already have committed your beta release
+# Now push to GitHub
+git push origin main
 ```
 
-## Step 2: Google OAuth Setup
+## Step 2: Deploy to Vercel
 
-### 2.1 Create a Project
+### Option A: Deploy via Vercel CLI (Recommended for first-time)
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Click "Select a project" → "New Project"
-3. Name it "DoubleVision" and click "Create"
+1. **Install Vercel CLI:**
+   ```bash
+   npm i -g vercel
+   ```
 
-### 2.2 Configure OAuth Consent Screen
+2. **Login to Vercel:**
+   ```bash
+   vercel login
+   ```
 
-1. Go to "APIs & Services" → "OAuth consent screen"
-2. Choose "External" and click "Create"
-3. Fill in the required fields:
-   - App name: "DoubleVision"
-   - User support email: Your email
-   - Developer contact: Your email
-4. Click "Save and Continue"
-5. Skip "Scopes" and "Test users"
-6. Click "Back to Dashboard"
+3. **Deploy:**
+   ```bash
+   # From your project directory
+   vercel
+   ```
 
-### 2.3 Create OAuth Credentials
+   Answer the prompts:
+   - Set up and deploy? **Y**
+   - Which scope? Select your account
+   - Link to existing project? **N**
+   - Project name? `doublevision` (or your choice)
+   - Directory? `./`
+   - Override settings? **N**
 
-1. Go to "APIs & Services" → "Credentials"
-2. Click "Create Credentials" → "OAuth client ID"
-3. Choose "Web application"
-4. Name it "DoubleVision Web"
-5. Add Authorized JavaScript origins:
-   - `http://localhost:3000` (for local development)
-   - `https://your-app-name.vercel.app` (your production URL)
-6. Add Authorized redirect URIs:
-   - `http://localhost:3000/api/auth/callback/google`
-   - `https://your-app-name.vercel.app/api/auth/callback/google`
-7. Click "Create"
-8. **Save the Client ID and Client Secret**
+4. **This creates a preview deployment.** To deploy to production:
+   ```bash
+   vercel --prod
+   ```
 
-## Step 3: GitHub OAuth Setup
+### Option B: Deploy via Vercel Dashboard (Easier)
 
-### 3.1 Register OAuth App
+1. **Go to https://vercel.com/new**
 
-1. Go to GitHub Settings → [Developer settings](https://github.com/settings/developers)
-2. Click "OAuth Apps" → "New OAuth App"
-3. Fill in the fields:
-   - Application name: "DoubleVision"
-   - Homepage URL: `https://your-app-name.vercel.app`
-   - Authorization callback URL: `https://your-app-name.vercel.app/api/auth/callback/github`
-4. Click "Register application"
-5. Click "Generate a new client secret"
-6. **Save the Client ID and Client Secret**
+2. **Import Git Repository:**
+   - Click "Import Git Repository"
+   - Authorize Vercel to access your GitHub
+   - Select `HyperNoodlez/DoubleVision`
 
-For local development, create another OAuth app with:
-- Homepage URL: `http://localhost:3000`
-- Callback URL: `http://localhost:3000/api/auth/callback/github`
+3. **Configure Project:**
+   - **Project Name:** `doublevision` (or your choice)
+   - **Framework Preset:** Next.js (auto-detected)
+   - **Root Directory:** `./`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `.next`
 
-## Step 4: Google Gemini API Setup
+4. **Add Environment Variables** (see Step 3 below)
 
-### 4.1 Get API Key
+5. **Click "Deploy"**
 
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Sign in with your Google account
-3. Click "Create API Key"
-4. Select a Google Cloud project or create a new one
-5. Click "Create API Key in existing project"
-6. **Save the API key**
+## Step 3: Configure Environment Variables
 
-The Gemini 2.5 Flash model is free with rate limits suitable for development.
+In Vercel Dashboard → Your Project → Settings → Environment Variables
 
-## Step 5: Vercel Blob Storage Setup
+Add these variables for **Production** and **Preview** environments:
 
-### 5.1 Create Blob Store
+### Required Variables
 
-1. Deploy your app to Vercel first (see Step 7)
-2. Go to your project in Vercel dashboard
-3. Click "Storage" tab
-4. Click "Create Database" → "Blob"
-5. Name it "doublevision-photos"
-6. Select the same region as your deployment
-7. Click "Create"
-8. The `BLOB_READ_WRITE_TOKEN` will be automatically added to your environment variables
+```bash
+# MongoDB
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/doublevision
 
-## Step 6: Linear Integration (Optional)
-
-### 6.1 Get API Key
-
-1. Go to [Linear Settings](https://linear.app/settings/api)
-2. Click "Personal API keys"
-3. Click "Create key"
-4. Name it "DoubleVision"
-5. **Save the API key**
-
-### 6.2 Get Team ID
-
-1. In Linear, go to your team settings
-2. Copy the Team ID from the URL or settings
-3. **Save the Team ID**
-
-## Step 7: Deploy to Vercel
-
-### 7.1 Connect Repository
-
-1. Push your code to GitHub
-2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-3. Click "Add New" → "Project"
-4. Import your GitHub repository
-5. Configure the project:
-   - Framework Preset: Next.js
-   - Root Directory: ./
-   - Build Command: `npm run build`
-   - Output Directory: .next
-
-### 7.2 Configure Environment Variables
-
-Click "Environment Variables" and add the following:
-
-**Database:**
-```
-MONGODB_URI=mongodb+srv://doublevision-app:<password>@cluster0.xxxxx.mongodb.net/doublevision?retryWrites=true&w=majority
-```
-
-**Authentication:**
-```
+# NextAuth
 NEXTAUTH_URL=https://your-app-name.vercel.app
-NEXTAUTH_SECRET=<generate-with-openssl-rand-base64-32>
-AUTH_GOOGLE_ID=<your-google-client-id>
-AUTH_GOOGLE_SECRET=<your-google-client-secret>
-AUTH_GITHUB_ID=<your-github-client-id>
-AUTH_GITHUB_SECRET=<your-github-client-secret>
+NEXTAUTH_SECRET=your-production-secret-here
+
+# Google OAuth
+AUTH_GOOGLE_ID=your-google-client-id.apps.googleusercontent.com
+AUTH_GOOGLE_SECRET=your-google-client-secret
+
+# GitHub OAuth
+AUTH_GITHUB_ID=your-github-client-id
+AUTH_GITHUB_SECRET=your-github-client-secret
+
+# Gemini AI
+GEMINI_API_KEY=your-gemini-api-key
+
+# Vercel Blob Storage (auto-configured, but verify)
+BLOB_READ_WRITE_TOKEN=vercel_blob_xxx
 ```
 
-To generate NEXTAUTH_SECRET, run:
+### Important Notes:
+
+**NEXTAUTH_SECRET:**
+Generate a new secret for production:
 ```bash
 openssl rand -base64 32
 ```
 
-**AI Moderation:**
+**NEXTAUTH_URL:**
+- For preview deployments: `https://your-app-name.vercel.app`
+- Update after first deployment with actual Vercel URL
+
+**OAuth Redirect URIs:**
+You need to update your Google/GitHub OAuth apps with the production callback URLs:
+- Google: `https://your-app-name.vercel.app/api/auth/callback/google`
+- GitHub: `https://your-app-name.vercel.app/api/auth/callback/github`
+
+## Step 4: Update OAuth Providers
+
+### Google OAuth Console
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Select your OAuth 2.0 Client ID
+3. Add to **Authorized redirect URIs:**
+   ```
+   https://your-app-name.vercel.app/api/auth/callback/google
+   ```
+
+### GitHub OAuth Settings
+1. Go to https://github.com/settings/developers
+2. Select your OAuth App
+3. Update **Authorization callback URL:**
+   ```
+   https://your-app-name.vercel.app/api/auth/callback/github
+   ```
+
+## Step 5: Database Setup (If Not Done)
+
+### MongoDB Atlas Production Database
+
+1. **Go to https://cloud.mongodb.com**
+
+2. **Create a new cluster** (or use existing):
+   - Cluster Tier: M0 (Free) is sufficient for beta
+   - Region: Choose closest to your users
+   - Cluster Name: `DoubleVision-Beta`
+
+3. **Create Database User:**
+   - Database Access → Add New Database User
+   - Username: `doublevision-prod`
+   - Password: Generate strong password
+   - Role: Atlas Admin (or Read/Write to specific DB)
+
+4. **Whitelist IP Addresses:**
+   - Network Access → Add IP Address
+   - **For Vercel:** Add `0.0.0.0/0` (allow from anywhere)
+   - Note: This is safe because MongoDB authentication is required
+
+5. **Get Connection String:**
+   - Clusters → Connect → Connect your application
+   - Copy the connection string:
+   ```
+   mongodb+srv://username:password@cluster.mongodb.net/doublevision
+   ```
+   - Add this to Vercel as `MONGODB_URI`
+
+6. **Initialize Database Indexes:**
+   After first deployment, the app will auto-create indexes on first use.
+
+## Step 6: Deploy and Test
+
+### First Deployment
+
+After configuring everything:
+
+1. **Trigger Deployment:**
+   - Via CLI: `vercel --prod`
+   - Via Dashboard: Settings → Git → Redeploy
+
+2. **Monitor Build:**
+   - Watch the deployment logs in Vercel Dashboard
+   - Build should complete in 2-3 minutes
+
+3. **Check Deployment URL:**
+   - Vercel will provide a URL like: `https://doublevision-xyz.vercel.app`
+   - This is your beta testing URL
+
+### Initial Testing Checklist
+
+- [ ] Visit the deployment URL
+- [ ] Test Google OAuth login
+- [ ] Test GitHub OAuth login
+- [ ] Upload a test photo
+- [ ] Submit a test review
+- [ ] Check MongoDB to verify data is being saved
+- [ ] Test AI moderation (submit good and bad reviews)
+- [ ] Test strike system
+- [ ] Check photo feedback page
+- [ ] Test review rating system
+
+## Step 7: Share with Beta Users
+
+### Beta User Access
+
+1. **Share the URL:** `https://your-app-name.vercel.app`
+
+2. **Provide Instructions:**
+   - Point users to the README.md for onboarding
+   - Explain community guidelines
+   - Set expectations (beta = bugs possible)
+
+3. **Collect Feedback:**
+   - Set up a feedback channel (email, Discord, Slack, etc.)
+   - Monitor Vercel logs for errors
+   - Check MongoDB for data issues
+
+### Beta Testing Best Practices
+
+**Limit Initial Users:**
+- Start with 5-10 trusted users
+- Expand gradually based on stability
+
+**Monitor Closely:**
+```bash
+# Watch Vercel logs in real-time
+vercel logs --follow
 ```
-GEMINI_API_KEY=<your-gemini-api-key>
-```
 
-**Storage:**
-```
-BLOB_READ_WRITE_TOKEN=<automatically-added-by-vercel>
-```
+**Rate Limiting:**
+Your app already has rate limiting configured in `/lib/rateLimit.ts`
 
-**Linear (Optional):**
-```
-LINEAR_API_KEY=<your-linear-api-key>
-LINEAR_TEAM_ID=<your-linear-team-id>
-```
+**Database Monitoring:**
+- MongoDB Atlas → Metrics → Monitor queries and performance
+- Set up alerts for high usage
 
-### 7.3 Deploy
+## Step 8: Custom Domain (Optional)
 
-1. Click "Deploy"
-2. Wait for the build to complete (2-3 minutes)
-3. Click on the deployment URL to visit your app
+If you want a custom domain instead of `*.vercel.app`:
 
-## Step 8: Post-Deployment Setup
+1. **Purchase Domain** (e.g., from Namecheap, Google Domains)
 
-### 8.1 Initialize Database Indexes
+2. **Add to Vercel:**
+   - Settings → Domains → Add Domain
+   - Follow Vercel's DNS configuration instructions
 
-The first time someone accesses the app, the database indexes will be created automatically. You can also run this manually:
+3. **Update Environment Variables:**
+   - Change `NEXTAUTH_URL` to your custom domain
+   - Update OAuth redirect URIs
 
-1. In your local environment, update `.env.local` with production MongoDB URI
-2. Run: `node -e "require('./lib/db/index.js').initializeIndexes()"`
-
-### 8.2 Test OAuth Login
-
-1. Visit your deployed app
-2. Click "Sign in with Google" and test the flow
-3. Click "Sign in with GitHub" and test the flow
-4. Verify you can access the dashboard after login
-
-### 8.3 Test Photo Upload
-
-1. Upload a test photo
-2. Verify it appears in Vercel Blob Storage dashboard
-3. Verify it displays correctly on your dashboard
-
-### 8.4 Test Review System
-
-1. Create a second account (different email)
-2. Upload a photo with first account
-3. Review it with second account
-4. Verify AI moderation runs (check Vercel logs)
-5. Verify reviews appear after completing 5
-
-## Step 9: Update OAuth Redirect URLs
-
-After deploying, update your OAuth redirect URLs to use your production domain:
-
-**Google:**
-1. Go to Google Cloud Console → Credentials
-2. Edit your OAuth client
-3. Update redirect URIs to use your Vercel domain
-
-**GitHub:**
-1. Go to GitHub OAuth Apps settings
-2. Update the callback URL to use your Vercel domain
+4. **SSL Certificate:**
+   - Vercel auto-provisions Let's Encrypt SSL
+   - HTTPS works automatically
 
 ## Troubleshooting
 
+### Build Fails
+
+**Check logs:**
+```bash
+vercel logs
+```
+
+**Common issues:**
+- Missing environment variables
+- TypeScript errors (run `npm run build` locally first)
+- Dependency issues (ensure `package-lock.json` is committed)
+
+### OAuth Not Working
+
+**Verify:**
+- `NEXTAUTH_URL` matches deployment URL exactly
+- OAuth redirect URIs are updated in Google/GitHub
+- `NEXTAUTH_SECRET` is set in Vercel
+
 ### Database Connection Issues
 
-If you see "MongoDB connection failed":
-- Check that your IP is allowed in MongoDB Atlas Network Access
-- Verify the connection string has the correct password
-- Ensure the database name is "doublevision"
+**Verify:**
+- MongoDB connection string is correct
+- Database user credentials are correct
+- IP whitelist includes `0.0.0.0/0`
+- Network access is enabled
 
-### OAuth Issues
+### AI Moderation Errors
 
-If OAuth login fails:
-- Verify redirect URIs match exactly (including http/https)
-- Check that credentials are correctly added to environment variables
-- Ensure OAuth consent screen is configured
+**Verify:**
+- `GEMINI_API_KEY` is set correctly
+- API key has sufficient quota
+- Check Vercel function logs for API errors
 
-### Image Upload Issues
-
-If image uploads fail:
-- Verify Blob Storage is created and connected
-- Check that BLOB_READ_WRITE_TOKEN is set
-- Ensure file size is under 10MB
-
-### AI Moderation Issues
-
-If reviews aren't being moderated:
-- Check Vercel logs for errors
-- Verify GEMINI_API_KEY is set correctly
-- Ensure you're not exceeding rate limits
-
-## Production Checklist
-
-Before going live:
-
-- [ ] MongoDB Atlas cluster created and configured
-- [ ] Database indexes initialized
-- [ ] Google OAuth credentials created and tested
-- [ ] GitHub OAuth credentials created and tested
-- [ ] Gemini API key created and tested
-- [ ] Vercel Blob Storage created and tested
-- [ ] All environment variables set in Vercel
-- [ ] Production build successful
-- [ ] OAuth redirect URLs updated with production domain
-- [ ] Test full user flow (signup → upload → review → feedback)
-- [ ] Linear integration tested (if enabled)
-- [ ] Security headers verified (check with securityheaders.com)
-- [ ] Rate limiting tested
-- [ ] Error logging verified in production
-
-## Monitoring
+## Monitoring and Analytics
 
 ### Vercel Analytics
 
-Enable Vercel Analytics for performance monitoring:
-1. Go to your project in Vercel
-2. Click "Analytics" tab
-3. Enable Web Analytics
+Enable in Dashboard → Analytics:
+- Web Vitals monitoring
+- Traffic analytics
+- Error tracking
 
-### Error Tracking (Optional)
+### MongoDB Monitoring
 
-For production error tracking, integrate Sentry:
-1. Create a Sentry account
-2. Add Sentry SDK to the project
-3. Configure error reporting in lib/logger.ts
+Atlas Dashboard → Metrics:
+- Query performance
+- Connection count
+- Data size
+
+### Application Logging
+
+Logs available at:
+```bash
+vercel logs --follow
+```
+
+Or in Dashboard → Deployments → Click deployment → Logs
 
 ## Scaling Considerations
 
-As your app grows:
+### When to Upgrade
 
-1. **Database**: Upgrade MongoDB Atlas tier for better performance
-2. **Rate Limiting**: Consider Redis for distributed rate limiting
-3. **Image Storage**: Monitor Blob Storage usage and costs
-4. **AI Moderation**: Monitor Gemini API usage and consider caching
-5. **Hosting**: Vercel scales automatically, but monitor usage
+**Vercel:**
+- Free tier: 100GB bandwidth, unlimited deployments
+- Upgrade to Pro ($20/mo) for:
+  - Higher bandwidth limits
+  - Better performance
+  - Team collaboration
+
+**MongoDB:**
+- M0 Free tier: 512MB storage, shared resources
+- Upgrade to M10 ($0.08/hr) when:
+  - Storage exceeds 500MB
+  - Need better performance
+  - More concurrent connections
+
+### Performance Optimization
+
+Current optimizations:
+- ✅ Rate limiting implemented
+- ✅ MongoDB indexes configured
+- ✅ Image optimization with Vercel Blob
+- ✅ Next.js 15 App Router (optimized SSR)
+
+Future optimizations:
+- Add Redis caching (Vercel KV)
+- Implement CDN for images
+- Add database read replicas
+
+## Rollback Strategy
+
+### If Issues Occur
+
+1. **Instant Rollback:**
+   - Vercel Dashboard → Deployments
+   - Find previous working deployment
+   - Click "..." → Promote to Production
+
+2. **Via CLI:**
+   ```bash
+   vercel rollback
+   ```
+
+3. **Database Rollback:**
+   - MongoDB Atlas → Backup & Restore
+   - Restore to previous snapshot
+
+## Beta Release Checklist
+
+- [ ] Code pushed to GitHub
+- [ ] Vercel project created
+- [ ] Environment variables configured
+- [ ] OAuth providers updated
+- [ ] MongoDB Atlas configured
+- [ ] First deployment successful
+- [ ] All features tested
+- [ ] Beta users invited
+- [ ] Monitoring enabled
+- [ ] Backup strategy in place
+
+## Next Steps After Beta
+
+1. **Gather Feedback:** 2-4 weeks of beta testing
+2. **Fix Bugs:** Address issues found by beta users
+3. **Optimize:** Based on usage patterns
+4. **Public Launch:** Expand to wider audience
+5. **Marketing:** Share on social media, photography communities
 
 ## Support
 
-For issues or questions:
-- Check [Next.js Docs](https://nextjs.org/docs)
-- Check [MongoDB Atlas Docs](https://docs.atlas.mongodb.com)
-- Check [Vercel Docs](https://vercel.com/docs)
-- Create an issue in the repository
+**Questions during deployment?**
+- Vercel Docs: https://vercel.com/docs
+- MongoDB Atlas Docs: https://docs.atlas.mongodb.com
+- Next.js Docs: https://nextjs.org/docs
+
+**DoubleVision specific issues?**
+- Check application logs in Vercel
+- Review MongoDB queries in Atlas
+- Test locally first with `npm run dev`
 
 ---
 
-**Congratulations! Your DoubleVision app is now deployed! 🎉**
+**Ready to deploy?** Start with Step 1 and follow the guide sequentially. Good luck with your beta launch! 🚀

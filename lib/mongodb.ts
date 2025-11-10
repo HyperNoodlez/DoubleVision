@@ -1,41 +1,46 @@
 import { MongoClient } from "mongodb";
 
-// Get URI from environment - will be undefined during build, set at runtime
-const uri = process.env.MONGODB_URI || "";
 const options = {};
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+let clientPromise: Promise<MongoClient> | undefined;
 
-if (process.env.NODE_ENV === "development") {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  let globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>;
-  };
+// Lazy initialization - only connects when actually used
+function getMongoClient(): Promise<MongoClient> {
+  if (clientPromise) {
+    return clientPromise;
+  }
 
-  if (!globalWithMongo._mongoClientPromise) {
-    if (!uri) {
-      throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
+  const uri = process.env.MONGODB_URI;
+
+  // This validation only happens when connection is actually attempted
+  if (!uri) {
+    throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    // In development mode, use a global variable so that the value
+    // is preserved across module reloads caused by HMR (Hot Module Replacement).
+    const globalWithMongo = global as typeof globalThis & {
+      _mongoClientPromise?: Promise<MongoClient>;
+    };
+
+    if (!globalWithMongo._mongoClientPromise) {
+      const client = new MongoClient(uri, options);
+      globalWithMongo._mongoClientPromise = client.connect();
     }
-    client = new MongoClient(uri, options);
-    globalWithMongo._mongoClientPromise = client.connect();
-  }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  // In production mode, it's best to not use a global variable.
-  // Only validate and connect when actually running (not during build)
-  if (uri) {
-    client = new MongoClient(uri, options);
-    clientPromise = client.connect();
+    clientPromise = globalWithMongo._mongoClientPromise;
   } else {
-    // During build time, create a dummy promise that will fail if actually used
-    clientPromise = Promise.reject(
-      new Error('Invalid/Missing environment variable: "MONGODB_URI"')
-    );
+    // In production mode, it's best to not use a global variable.
+    const client = new MongoClient(uri, options);
+    clientPromise = client.connect();
   }
+
+  return clientPromise;
 }
 
-// Export a module-scoped MongoClient promise. By doing this in a
-// separate module, the client can be shared across functions.
-export default clientPromise;
+// Export a thenable object that behaves like a promise but delays execution
+export default {
+  then: (onfulfilled?: any, onrejected?: any) => getMongoClient().then(onfulfilled, onrejected),
+  catch: (onrejected?: any) => getMongoClient().catch(onrejected),
+  finally: (onfinally?: any) => getMongoClient().finally(onfinally),
+} as Promise<MongoClient>;

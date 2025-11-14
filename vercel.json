@@ -4,19 +4,6 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": {
-    "MONGODB_URI": "@mongodb_uri",
-    "NEXTAUTH_URL": "@nextauth_url",
-    "NEXTAUTH_SECRET": "@nextauth_secret",
-    "AUTH_GOOGLE_ID": "@auth_google_id",
-    "AUTH_GOOGLE_SECRET": "@auth_google_secret",
-    "AUTH_GITHUB_ID": "@auth_github_id",
-    "AUTH_GITHUB_SECRET": "@auth_github_secret",
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "BLOB_READ_WRITE_TOKEN": "@blob_read_write_token",
-    "LINEAR_API_KEY": "@linear_api_key",
-    "LINEAR_TEAM_ID": "@linear_team_id"
-  },
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30

@@ -5,10 +5,6 @@ import PhotoUpload from "@/components/PhotoUpload";
 import RatingDisplay, { RatingProgress } from "@/components/RatingDisplay";
 import StrikeStatus from "@/components/StrikeStatus";
 import { getUserStats, canUserUploadToday } from "@/lib/db/users";
-import {
-  getTodayCompletedReviewCount,
-  hasCompletedMinimumReviews,
-} from "@/lib/db/reviewAssignments";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -20,13 +16,10 @@ export default async function DashboardPage() {
   const userId = session.user.id;
 
   // Fetch user stats and upload eligibility
-  const [userStats, canUpload, completedReviews, hasCompleted5Reviews] =
-    await Promise.all([
-      getUserStats(userId),
-      canUserUploadToday(userId),
-      getTodayCompletedReviewCount(userId),
-      hasCompletedMinimumReviews(userId),
-    ]);
+  const [userStats, canUpload] = await Promise.all([
+    getUserStats(userId),
+    canUserUploadToday(userId),
+  ]);
 
   const stats = userStats || {
     eloRating: 1000,
@@ -36,17 +29,14 @@ export default async function DashboardPage() {
   };
 
   // Determine upload disabled reason
-  const isDevelopment = process.env.NODE_ENV === "development";
   let uploadDisabledReason = "";
 
   if (!canUpload) {
     uploadDisabledReason =
       "You've already uploaded a photo today. Come back tomorrow!";
-  } else if (!hasCompleted5Reviews && !isDevelopment) {
-    uploadDisabledReason = `Complete ${5 - completedReviews} more reviews to unlock photo upload.`;
   }
 
-  const canUploadPhoto = canUpload && (hasCompleted5Reviews || isDevelopment);
+  const canUploadPhoto = canUpload;
 
   return (
     <div className="min-h-screen flex flex-col py-8 px-4">

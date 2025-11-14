@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { put } from "@vercel/blob";
 import { canUserUploadToday } from "@/lib/db/users";
-import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { createPhoto } from "@/lib/db/photos";
 import { incrementPhotoCount } from "@/lib/db/users";
 import { writeFile, mkdir } from "fs/promises";
@@ -36,24 +35,6 @@ export async function POST(request: NextRequest) {
         },
         { status: 403 }
       );
-    }
-
-    // Check if user has completed 5 reviews (skip in development mode)
-    const isDevelopment = process.env.NODE_ENV === "development";
-    const hasCompletedReviews = await hasCompletedMinimumReviews(userId);
-
-    if (!hasCompletedReviews && !isDevelopment) {
-      return NextResponse.json(
-        {
-          error:
-            "You must complete 5 photo reviews before uploading your own photo.",
-        },
-        { status: 403 }
-      );
-    }
-
-    if (isDevelopment && !hasCompletedReviews) {
-      console.log("⚠️ Development mode: Bypassing 5-review requirement");
     }
 
     // Parse the multipart form data

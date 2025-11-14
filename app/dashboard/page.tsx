@@ -87,42 +87,6 @@ export default async function DashboardPage() {
         {/* Strike Status */}
         <StrikeStatus />
 
-        {/* Today&apos;s Challenge */}
-        <div className="card">
-          <h2 className="text-lg font-bold mb-2">Today&apos;s Challenge</h2>
-          <p className="text-text-secondary mb-4">
-            Complete 5 reviews to unlock the ability to upload your photo
-          </p>
-          <div className="flex gap-2 mb-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className={`flex-1 h-3 rounded-full transition-colors ${
-                  i <= completedReviews ? "bg-correct" : "bg-surface"
-                }`}
-              />
-            ))}
-          </div>
-          <p className="text-sm text-text-secondary">
-            {completedReviews} of 5 reviews completed today
-          </p>
-        </div>
-
-        {/* Development Mode Notice */}
-        {isDevelopment && !hasCompleted5Reviews && (
-          <div className="card border-2 border-dashed border-present bg-present/5">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">🧪</div>
-              <div>
-                <h3 className="font-bold text-present">Development Mode</h3>
-                <p className="text-sm text-text-secondary">
-                  Review requirement bypassed for testing. Upload is enabled!
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Photo Upload */}
         <PhotoUpload
           disabled={!canUploadPhoto}
@@ -132,7 +96,7 @@ export default async function DashboardPage() {
         {/* Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link href="/review" className="btn-primary text-center">
-            {completedReviews < 5 ? "Start Reviewing" : "Review More Photos"}
+            Review Photos
           </Link>
           <Link href="/feedback" className="btn-secondary text-center">
             View Your Feedback

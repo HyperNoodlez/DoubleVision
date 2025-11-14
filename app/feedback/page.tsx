@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { hasCompletedMinimumReviews } from "@/lib/db/reviewAssignments";
 import { getUserLatestPhotoWithStats, getPhotoWithStats } from "@/lib/db/photos";
 import { getApprovedReviewsByPhoto } from "@/lib/db/reviews";
@@ -111,11 +112,12 @@ export default async function FeedbackPage({
         {/* Photo and Stats */}
         <div className="card">
           <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <img
+            <div className="relative aspect-square">
+              <Image
                 src={latestPhoto.imageUrl}
                 alt="Your photo"
-                className="w-full rounded-lg border border-border"
+                fill
+                className="object-cover rounded-lg border border-border"
               />
             </div>
             <div className="space-y-6">

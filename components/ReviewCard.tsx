@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface ReviewCardProps {
   photoUrl: string;
@@ -59,11 +60,12 @@ export default function ReviewCard({
     <div className="card max-w-3xl mx-auto">
       {/* Photo Display */}
       <div className="mb-6">
-        <div className="relative rounded-lg overflow-hidden border border-border bg-background">
-          <img
+        <div className="relative rounded-lg overflow-hidden border border-border bg-background aspect-square">
+          <Image
             src={photoUrl}
             alt="Photo to review"
-            className="w-full h-auto max-h-[500px] object-contain"
+            fill
+            className="object-contain"
           />
         </div>
       </div>

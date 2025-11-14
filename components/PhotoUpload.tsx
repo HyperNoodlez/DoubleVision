@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface PhotoUploadProps {
   disabled?: boolean;
@@ -195,10 +196,12 @@ export default function PhotoUpload({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="relative rounded-lg overflow-hidden border border-border">
-            <img
+          <div className="relative rounded-lg overflow-hidden border border-border max-h-96">
+            <Image
               src={preview}
               alt="Preview"
+              width={800}
+              height={600}
               className="w-full h-auto max-h-96 object-contain bg-background"
             />
           </div>

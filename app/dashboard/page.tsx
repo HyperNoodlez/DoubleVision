@@ -1,6 +1,7 @@
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import PhotoUpload from "@/components/PhotoUpload";
 import RatingDisplay, { RatingProgress } from "@/components/RatingDisplay";
 import StrikeStatus from "@/components/StrikeStatus";
@@ -51,10 +52,12 @@ export default async function DashboardPage() {
               </p>
             </div>
             {session.user.image && (
-              <img
+              <Image
                 src={session.user.image}
                 alt={session.user.name || "User"}
-                className="w-16 h-16 rounded-full border-2 border-border"
+                width={64}
+                height={64}
+                className="rounded-full border-2 border-border"
               />
             )}
           </div>

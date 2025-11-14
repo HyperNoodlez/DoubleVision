@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getUserPhotosWithPagination } from "@/lib/db/photos";
 import { StarRating } from "@/components/RatingDistribution";
 
@@ -52,12 +53,13 @@ export default async function ArchivePage({
                 <div key={photo._id} className="card">
                   <Link
                     href={`/feedback?photoId=${photo._id}`}
-                    className="block"
+                    className="block relative aspect-square mb-4"
                   >
-                    <img
+                    <Image
                       src={photo.imageUrl}
                       alt="Photo"
-                      className="w-full aspect-square object-cover rounded-lg border border-border mb-4 hover:opacity-90 transition-opacity"
+                      fill
+                      className="object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
                     />
                   </Link>
 

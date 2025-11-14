@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "./Button";
 import { ScoreDisplay } from "./ScoreDisplay";
 
@@ -153,10 +154,12 @@ export default function ReviewRating({ photoId, reviews }: ReviewRatingProps) {
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 {reviewer.image && (
-                  <img
+                  <Image
                     src={reviewer.image}
                     alt={reviewer.name}
-                    className="w-12 h-12 rounded-full border-2 border-border"
+                    width={48}
+                    height={48}
+                    className="rounded-full border-2 border-border"
                   />
                 )}
                 <div>

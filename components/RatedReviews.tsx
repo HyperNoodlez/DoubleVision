@@ -1,5 +1,6 @@
 import { getReviewRatingsWithReviewers } from "@/lib/db/reviewRatings";
 import { getUserById } from "@/lib/db/users";
+import Image from "next/image";
 
 interface RatedReviewsProps {
   photoId: string;
@@ -46,10 +47,12 @@ export default async function RatedReviews({ photoId }: RatedReviewsProps) {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               {reviewer.image && (
-                <img
+                <Image
                   src={reviewer.image}
                   alt={reviewer.name}
-                  className="w-12 h-12 rounded-full border-2 border-border"
+                  width={48}
+                  height={48}
+                  className="rounded-full border-2 border-border"
                 />
               )}
               <div>
